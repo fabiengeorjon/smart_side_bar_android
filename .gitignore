@@ -1,0 +1,18 @@
+# Gradle / IDE
+.gradle/
+build/
+/app/build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+
+# Signing material — never commit
+keystore.properties
+*.jks
+*.keystore
+
+# Build outputs (dist/ holds the release APK copied by scripts/build-release.sh)
+dist/*
+!dist/.gitkeep

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Edge Bar</string>
+    <string name="a11y_description">Edge Bar adds a narrow handle at the edge of the screen. Swipe inward on it to open a sidebar with your pinned apps and quick tools (calculator, torch, screenshot, lock screen).\n\nEdge Bar does not read, store or send what is on your screen. It uses the accessibility service only to draw its overlay, take screenshots and lock the screen when you ask, and to notice which app is in front if you add apps to its hide list. It has no internet access.</string>
+</resources>
