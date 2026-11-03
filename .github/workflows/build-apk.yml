@@ -1,0 +1,82 @@
+name: Build APK
+
+on:
+  push:
+    branches: ["claude/**", "main", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Signing: if the repository secrets EDGEBAR_KEYSTORE_B64 / EDGEBAR_KEYSTORE_PASSWORD
+      # exist, use that permanent key. Otherwise sign with a throwaway key: fine for
+      # testing, but a later build with a different key cannot update it in place.
+      - name: Signing key
+        env:
+          KS_B64: ${{ secrets.EDGEBAR_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.EDGEBAR_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/edge-bar-release.jks"
+            printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=edgebar\nkeyPassword=%s\n' \
+              "$RUNNER_TEMP/edge-bar-release.jks" "$KS_PASS" "$KS_PASS" > keystore.properties
+            echo "SIGNING=permanent key from secrets" >> "$GITHUB_ENV"
+          else
+            EDGEBAR_KEY_DIR="$RUNNER_TEMP/edgebar-key" scripts/make-keystore.sh
+            echo "SIGNING=throwaway test key" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build signed release APK
+        run: ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Copy and verify
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/edge-bar.apk
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)"
+          "$BT/apksigner" verify --verbose --print-certs dist/edge-bar.apk | tee dist/apksigner-verify.txt
+          {
+            echo "signing: $SIGNING"
+            "$BT/aapt2" dump badging dist/edge-bar.apk | head -1
+            echo "size_bytes: $(stat -c %s dist/edge-bar.apk)"
+            echo "sha256: $(sha256sum dist/edge-bar.apk | cut -d' ' -f1)"
+            echo "commit: $GITHUB_SHA"
+          } | tee dist/BUILD-INFO.txt
+          cat dist/BUILD-INFO.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edge-bar-apk
+          path: dist/
+          if-no-files-found: error
+
+      - name: Unit tests
+        if: always()
+        run: ./gradlew --no-daemon test
+
+      - name: Lint
+        if: always()
+        run: ./gradlew --no-daemon lint
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: ignore
