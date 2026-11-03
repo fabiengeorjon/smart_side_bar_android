@@ -21,6 +21,7 @@
     </queries>
 
     <application
+        android:name=".EdgeBarApplication"
         android:allowBackup="false"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"

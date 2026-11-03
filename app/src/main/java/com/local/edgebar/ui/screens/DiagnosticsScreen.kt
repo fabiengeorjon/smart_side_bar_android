@@ -11,6 +11,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import android.content.ClipData
+import android.content.ClipboardManager
+import com.local.edgebar.diag.CrashLog
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,7 +42,34 @@ fun DiagnosticsScreen(s: EdgeBarSettings, serviceEnabled: Boolean) {
     val time = remember { SimpleDateFormat("HH:mm:ss", Locale.ROOT) }
     val day = remember { SimpleDateFormat("MMM d HH:mm", Locale.ROOT) }
 
+    val context = LocalContext.current
+    var crash by remember { mutableStateOf(CrashLog.read(context)) }
+
     LazyColumn(Modifier.fillMaxSize()) {
+        crash?.let { trace ->
+            item { SectionLabel("Last crash") }
+            item {
+                EdgeCard {
+                    Text(
+                        trace.lineSequence().take(14).joinToString("\n"),
+                        color = EdgeColors.Accent,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                    EdgeButton("Copy full crash report") {
+                        val cm = context.getSystemService(ClipboardManager::class.java)
+                        cm.setPrimaryClip(ClipData.newPlainText("Edge Bar crash", trace))
+                    }
+                    Gap(8.dp)
+                    EdgeButton("Clear", primary = false) {
+                        CrashLog.clear(context)
+                        crash = null
+                    }
+                    Gap(8.dp)
+                }
+            }
+        }
         item { SectionLabel("Service") }
         item {
             EdgeCard {
