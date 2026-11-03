@@ -59,8 +59,11 @@ object OverlayWindows {
             gravity = sideGravity(side)
         }
 
+    /** True once WindowManager.addView succeeded (it sets the parent synchronously). */
+    fun isAdded(view: android.view.View?): Boolean = view?.parent != null
+
     fun safeRemove(wm: WindowManager, view: android.view.View?): Throwable? {
-        if (view == null || !view.isAttachedToWindow) return null
+        if (!isAdded(view)) return null
         return runCatching { wm.removeViewImmediate(view) }.exceptionOrNull()
     }
 }
